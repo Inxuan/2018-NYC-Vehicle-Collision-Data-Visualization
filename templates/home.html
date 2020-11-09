@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style> /* set the CSS */
+
+.dot {
+
+        }
+
+.rect {
+  fill: none;
+  stroke: black;
+  stroke-width: 2px;
+}
+div.tooltip {
+  position: absolute;
+  text-align: center;
+  width: 60px;
+  height: 28px;
+  padding: 2px;
+  font: 12px sans-serif;
+  background: lightsteelblue;
+  border: 0px;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+
+</style>
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+
+<body>
+<div style="float: left;">
+<svg width="850" height="720">
+    <image xlink:href="/static/map.png" x="0" y="0" height="710.33px">
+</image>
+</svg>
+    <button class="btn btn-primary" onmousedown="zoomin()">+</button>
+    <button class="btn btn-primary" onmousedown="zoomout()">-</button>
+</div>
+<!-- load the d3.js library -->
+
+<script src="http://d3js.org/d3.v4.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+
+
+<script>
+var latitude = {{ latitude | safe }};
+var longitude = {{ longitude | safe }};
+var borough = {{ borough | safe }}
+var date = {{ date | safe }}
+var time = {{ time | safe }}
+//console.log(latitude);
+//console.log(longitude);
+//console.log(borough);
+//console.log(date);
+//console.log(time);
+var xi =0;
+var yi =0;
+var width = 844.67;
+var height = 710.33;
+var pad = 40;
+var zoom = 1;
+
+var xmax = -73.582201;
+var xmin = -74.269729;
+var ymax = 40.924259;
+var ymin = 40.478081;
+var xscale = d3.scaleLinear().domain([xmin, xmax]).range([0, width]);
+var yscale = d3.scaleLinear().domain([ymin, ymax]).range([height, 0]);
+var svg = d3.select("svg");
+
+drawRect(xi,yi,longitude,latitude,borough,date,time,width,height,zoom);
+
+function zoomin(){
+}
+
+function zoomout(){
+}
+function drawRect(xi,yi,data,data1,data2,date,time,width,height,zoom) {
+    var div = d3.select("body").append("div")
+    .attr("class", "tooltip")
+    .style("opacity", 0);
+    var g = svg.append("g")
+        .attr("transform", "translate(" + xi + "," + yi + ")");
+
+    g.append("g")
+        .attr("transform", "translate(" + 0 + "," + 0 + ")")
+        .call(d3.axisLeft(yscale).ticks(10));
+
+
+    /*g.append("g")
+        .attr("transform", "translate(0," + height + ")")
+        .call(d3.axisBottom(xscale).ticks(10));
+        */
+    g.append("g")
+        .append("rect")
+        .attr("class", "rect")
+        .attr("width", width)
+        .attr("height", height);
+
+    g.selectAll(".dot")
+        .data(data)
+        .enter().append("circle")
+        .attr("class", "dot")
+        .attr("r", 3)
+        .attr("cx", function (d) {
+            return xscale(d);
+        })
+        .attr("cy", function (d, i) {
+            return yscale(data1[i]);
+        })
+        .attr("fill", function (d, i) {
+            var result = 'Green';
+            if (data2[i] == 1) {
+                result = 'Red';
+            } else if (data2[i] == 2) {
+                result = 'Green';
+            } else if (data2[i] == 3) {
+                result = 'Blue';
+            } else if (data2[i] == 4) {
+                result = 'Purple';
+            } else {
+                result = 'Orange';
+            }
+
+            return result;
+        })
+        .on("mouseover", function(d,i) {
+       div.transition()
+         .duration(200)
+         .style("opacity", .9);
+       div.html(date[i]+"\n"+time[i])
+         .style("left", (d3.event.pageX) + "px")
+         .style("top", (d3.event.pageY - 28) + "px");
+       })
+     .on("mouseout", function(d) {
+       div.transition()
+         .duration(500)
+         .style("opacity", 0);
+       })
+
+    ;
+}
+
+</script>
+
+</body>
+</html>
