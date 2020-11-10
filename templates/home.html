@@ -1,15 +1,81 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
 <style> /* set the CSS */
+.weatherbar{
+}
+.weatherbar--hedden {
+  opacity:0.4;
+  fill: #ccc;
+}
+.barsample{
+  stroke: black;
+}
+.injurebar{
 
+}
+.injurebar--hedden {
+  opacity:0.4;
+  fill: #ccc;
+}
+.bar {
+  fill: orange;
+  opacity:0.8;
+}
+.bar--hedden {
+  opacity:0.4;
+  fill: #ccc;
+}
+.killbar {
+
+  fill: red;
+}
+.killbar--hedden {
+  opacity:0.4;
+  fill:  #ccc;
+}
 .dot {
 
         }
-
+.dot--hedden {
+     fill: #ccc;
+}
+.dot--select {
+         opacity:0;
+}
+.hourdot {
+      fill: orange;
+}
+.hourdot--hedden {
+      fill: #ccc;
+}
+.monthdotsample{
+  stroke: white;
+  fill: #ff7200;
+}
+.monthdot {
+      stroke: white;
+      fill: #ff7200;
+}
+.monthdot--hedden {
+      fill: #ccc;
+}
 .rect {
   fill: none;
   stroke: black;
   stroke-width: 2px;
+}
+.legend{
+    stroke: white;
+}
+.line {
+          fill: none;
+          stroke: steelblue;
+          stroke-width: 2px;
+}
+.lineT {
+          fill: none;
+          stroke: steelblue;
+          stroke-width: 2px;
 }
 div.tooltip {
   position: absolute;
@@ -23,7 +89,11 @@ div.tooltip {
   border-radius: 8px;
   pointer-events: none;
 }
-
+.canvas{
+    margin-top: 10px;
+    margin-left: 10px;
+    position: absolute;
+}
 
 </style>
 <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
@@ -33,13 +103,15 @@ div.tooltip {
 
 <body>
 <div style="float: left;">
-<svg width="850" height="720">
-    <image xlink:href="/static/map.png" x="0" y="0" height="710.33px">
+<svg id="canvas" width="1520" height="780">
+    <image xlink:href="/static/map.png" x="30" y="50" height="710.33px">
 </image>
 </svg>
-    <button class="btn btn-primary" onmousedown="zoomin()">+</button>
-    <button class="btn btn-primary" onmousedown="zoomout()">-</button>
+
 </div>
+    <button class="btn btn-primary" style="width: 200px;margin-left: 150px" onmousedown="zoomin()">+</button>
+    <button class="btn btn-primary" style="width: 200px;margin-left: 230px" onmousedown="zoomout()">-</button>
+    <button class="btn btn-primary" style="width: 200px;margin-left: 300px" onmousedown="changemode()">Change Mode</button>
 <!-- load the d3.js library -->
 
 <script src="http://d3js.org/d3.v4.min.js"></script>
@@ -47,65 +119,1448 @@ div.tooltip {
 
 
 <script>
+
 var latitude = {{ latitude | safe }};
 var longitude = {{ longitude | safe }};
-var borough = {{ borough | safe }}
-var date = {{ date | safe }}
-var time = {{ time | safe }}
-//console.log(latitude);
-//console.log(longitude);
-//console.log(borough);
-//console.log(date);
-//console.log(time);
+var borough = {{ borough | safe }};
+var date = {{ date | safe }};
+var time = {{ time | safe }};
+var hour = {{ hour | safe }};
+var month = {{ month | safe }};
+var injure = {{ injure | safe }};
+var kill = {{ kill | safe }};
+var weather = {{ weather | safe }};
+var killsum=[0,0,0,0,0,0,
+            0,0,0,0,0,0];
+var injuresum=[0,0,0,0,0,0,
+                0,0,0,0,0,0];
+
+var latitude4 = {{ latitude4 | safe }};
+var longitude4 = {{ longitude4 | safe }};
+
+var monthSelect = [1,1,1,1,1,1,
+                   1,1,1,1,1,1];
+var hourSelect = [1,1,1,1,1,1,
+                  1,1,1,1,1,1];
+var monthsum = [0,0,0,0,0,0,
+                0,0,0,0,0,0];
+var hoursum = [0,0,0,0,0,0,
+              0,0,0,0,0,0];
+var weathersum = [0,0,0,0];
+var weatherSelect = [1,1,1,1];
+var weatherbar;
+var killbar;
+var bar;
+var dot;
+var brush;
+var brushArea;
+var monthdot;
+var hourdot;
+var injurebar;
+var injureratesum = [0,0,0,0];
+var injureSelect = [1,1,1,1];
+
+var seriouness;
+var mode=1;
+for (var m =0;m < month.length;m = m+1){
+
+  monthsum[month[m]-1]+=1;
+}
+for (var i =0;i < weather.length;i = i+1){
+  weathersum[weather[i]]+=1;
+}
+for (var i =0;i < time.length;i = i+1){
+  hoursum[hour[i]]+=1;
+}
+for (var i =0;i < injure.length;i = i+1){
+  var ir = injure[i]
+  injuresum[month[i]-1]+=ir;
+  if(ir>3){
+    ir = 3;
+  }
+  injureratesum[ir]+=1;
+}
+for (var i =0;i < kill.length;i = i+1){
+  killsum[month[i]-1]+=kill[i];
+}
+//console.log(killsum);
 var xi =0;
 var yi =0;
+var dy = 40;
 var width = 844.67;
 var height = 710.33;
 var pad = 40;
 var zoom = 1;
-
+var temp1 = [];
+for(var i=0; i < hour.length;i++){
+    temp1.push(i);
+}
 var xmax = -73.582201;
-var xmin = -74.269729;
-var ymax = 40.924259;
+var xmin =  -74.272623;
+var ymax = 40.922205;
 var ymin = 40.478081;
 var xscale = d3.scaleLinear().domain([xmin, xmax]).range([0, width]);
 var yscale = d3.scaleLinear().domain([ymin, ymax]).range([height, 0]);
 var svg = d3.select("svg");
+var g = svg.append("g").attr("transform", "translate(" + 30 + "," + 50 + ")");
 
+var g3 = svg.append("g").attr("transform", "translate(" + 920  + "," + (20+dy) + ")");
+var g2 = svg.append("g").attr("transform", "translate(" + 920  + "," + (20+dy)+ ")");
+var g4 = svg.append("g").attr("transform", "translate(" + 920  + "," + (270+dy) + ")");
+var g5 = svg.append("g").attr("transform", "translate(" + 920  + "," + (520+dy)+ ")");
+var g6 = svg.append("g").attr("transform", "translate(" + 1220  + "," + (520+dy)+ ")");
+var g7 = svg.append("g").attr("transform", "translate(" + 50 + "," +  (20+dy) + ")");
+var selectP = temp1;
+var selectH = [];
+//console.log(svg);
+//console.log(month.length);
+//console.log(hourSelect);
+drawlineM(monthsum);
+drawbarI(injuresum,killsum);
+drawbarW(weathersum);
+drawbarR(injureratesum);
+drawlineT(hoursum);
 drawRect(xi,yi,longitude,latitude,borough,date,time,width,height,zoom);
+var filterP = [];
+for (var i = 0; i < longitude.length; i++) {
+   filterP.push(i);
+}
+zoomin();
+zoomin();
+zoomin();
+drawLegend();
+var points2;
+var borough2;
+var longitude2;
+var latitude2;
+
+function toZoom(factor){
+    temp=[];
+    if(zoom==1){
+        for (var i = 0; i < longitude.length; i++)
+            temp.push([]);
+        for (var i = 0; i < longitude.length; i++) {
+            if (filterP.includes(i))
+                temp[i].push(i);
+        }
+    }
+    else {
+        for (var i = 0; i < factor * factor; i++)
+            temp.push([]);
+        for (var i = 0; i < longitude.length; i++) {
+            if (filterP.includes(i))
+                temp[Math.floor((longitude[i] - xmin) / ((xmax - xmin) / factor)) + Math.floor((latitude[i] - ymin) / ((ymax - ymin) / factor)) * factor].push(i);
+        }
+    }
+    return temp;
+}
+
+function getCenterX(p) {
+    temp = [];
+    for(var i=0;i<p.length;i++) {
+        if (p[i].length == 0) {
+            temp.push(0);
+        }
+        else {
+            var count = 0;
+            var sum = 0;
+            for (var j =0;j<p[i].length;j++) {
+                count += 1;
+                sum += longitude[p[i][j]];
+            }
+            temp.push(sum / count);
+        }
+    }
+    return temp;
+}
+
+function getCenterY(p) {
+    temp = [];
+    for(var i=0;i<p.length;i++) {
+        if (p[i].length == 0) {
+            temp.push(0);
+        }
+        else {
+            var count = 0;
+            var sum = 0;
+            for (var j =0;j<p[i].length;j++) {
+                count += 1;
+                sum += latitude[p[i][j]];
+            }
+            temp.push(sum / count);
+        }
+    }
+    return temp;
+}
+
+function getBorough(p){
+    temp=[];
+    for(var i=0;i<p.length;i++) {
+        if (p[i].length == 0) {
+            temp.push(0);
+        }
+        else {
+            var max=0;
+            var arr=[0,0,0,0,0];
+            var index=0;
+            for (var j =0;j<p[i].length;j++) {
+                if(borough[p[i][j]]==1) arr[0]+=1;
+                else if(borough[p[i][j]]==2) arr[1]+=1;
+                else if(borough[p[i][j]]==3) arr[2]+=1;
+                else if(borough[p[i][j]]==4) arr[3]+=1;
+                else if(borough[p[i][j]]==5) arr[4]+=1;
+            }
+            for (var j =0;j<arr.length;j++){
+                if(arr[j]>=max){
+                    max=arr[j];
+                    index=j+1;
+                }
+            }
+            temp.push(index);
+        }
+    }
+    return temp;
+}
+
 
 function zoomin(){
+    if (zoom < 4) {
+        d3.selectAll(".dot").remove();
+        brushArea.call(brush.move, null);
+        zoom += 1;
+        if(mode==1) {
+            switch (zoom) {
+                case 2:
+                    points2 = toZoom(Math.floor(40 * Math.sqrt(Math.sqrt(filterP.length / longitude.length))));
+                    break;
+                case 3:
+                    points2 = toZoom(Math.floor(30 * Math.sqrt(Math.sqrt(filterP.length / longitude.length))));
+                    break;
+                case 4:
+                    points2 = toZoom(Math.floor(20 * Math.sqrt(Math.sqrt(filterP.length / longitude.length))));
+                    break;
+            }
+            borough2 = getBorough(points2);
+            longitude2 = getCenterX(points2);
+            latitude2 = getCenterY(points2);
+            drawRect(xi, yi, longitude2, latitude2, borough2, date, time, width, height, zoom, points2);
+            opacityDot();
+        }
+        else{
+            switch (zoom) {
+                case 2:
+                    points2 = toZoom(Math.floor(40 * Math.sqrt(Math.sqrt(filterP.length / longitude.length))));
+                    break;
+                case 3:
+                    points2 = toZoom(Math.floor(30 * Math.sqrt(Math.sqrt(filterP.length / longitude.length))));
+                    break;
+                case 4:
+                    points2 = toZoom(Math.floor(20 * Math.sqrt(Math.sqrt(filterP.length / longitude.length))));
+                    break;
+            }
+            seriousness = getSeriousness(points2);
+            longitude2 = getCenterX(points2);
+            latitude2 = getCenterY(points2);
+            drawRect2(xi, yi, longitude2, latitude2, seriousness, date, time, width, height, zoom, points2);
+            opacityDot();
+        }
+    }
 }
 
 function zoomout(){
+    if (zoom > 1) {
+        d3.selectAll(".dot").remove();
+        brushArea.call(brush.move, null);
+        zoom -= 1;
+        if(mode==1) {
+            switch (zoom) {
+                case 2:
+                    points2 = toZoom(Math.floor(40 * Math.sqrt(Math.sqrt(filterP.length / longitude.length))));
+                    break;
+                case 3:
+                    points2 = toZoom(Math.floor(30 * Math.sqrt(Math.sqrt(filterP.length / longitude.length))));
+                    break;
+                case 1:
+                    points2 = toZoom(30);
+                    break;
+            }
+            borough2 = getBorough(points2);
+            longitude2 = getCenterX(points2);
+            latitude2 = getCenterY(points2);
+            drawRect(xi, yi, longitude2, latitude2, borough2, date, time, width, height, zoom, points2);
+            opacityDot();
+        }
+        else{
+            switch (zoom) {
+                case 2:
+                    points2 = toZoom(Math.floor(40 * Math.sqrt(Math.sqrt(filterP.length / longitude.length))));
+                    break;
+                case 3:
+                    points2 = toZoom(Math.floor(30 * Math.sqrt(Math.sqrt(filterP.length / longitude.length))));
+                    break;
+                case 1:
+                    points2 = toZoom(50);
+                    break;
+            }
+            seriousness = getSeriousness(points2);
+            longitude2 = getCenterX(points2);
+            latitude2 = getCenterY(points2);
+            drawRect2(xi, yi, longitude2, latitude2, seriousness, date, time, width, height, zoom, points2);
+            opacityDot();
+        }
+    }
 }
-function drawRect(xi,yi,data,data1,data2,date,time,width,height,zoom) {
+
+function getSeriousness(p) {
+    temp=[];
+    for(var i=0;i<p.length;i++) {
+        if (p[i].length == 0) {
+            temp.push(0);
+        }
+        else {
+            var count=0;
+            var totalInjured=0;
+            for (var j =0;j<p[i].length;j++) {
+                count+=1;
+                totalInjured+=injure[p[i][j]];
+            }
+            var rate=totalInjured/count;
+            if(zoom==1){
+                    if(rate<1){
+                    temp.push(0);
+                }
+                else if(rate<2){
+                    temp.push(1);
+                }
+                else if(rate<3){
+                    temp.push(2);
+                }
+                else {
+                    temp.push(3);
+                }
+            }
+            else {
+                if (rate <= 0.1) {
+                    temp.push(0);
+                } else if (rate <= 0.2) {
+                    temp.push(1);
+                } else if (rate <= 0.3) {
+                    temp.push(2);
+                } else {
+                    temp.push(3);
+                }
+            }
+
+        }
+    }
+    return temp;
+}
+
+function changemode(){
+    if(mode==1) mode=2;
+    else mode=1;
+    d3.selectAll(".dot").remove();
+    brushArea.call(brush.move, null);
+    if(mode==1){
+        switch (zoom) {
+            case 1:
+                points2=toZoom(50);
+            case 2:
+                points2=toZoom(Math.floor(40*Math.sqrt(Math.sqrt(filterP.length/longitude.length))));
+                break;
+            case 3:
+                points2=toZoom(Math.floor(30*Math.sqrt(Math.sqrt(filterP.length/longitude.length))));
+                break;
+            case 4:
+                points2=toZoom(Math.floor(20*Math.sqrt(Math.sqrt(filterP.length/longitude.length))));
+                break;
+        }
+        borough2=getBorough(points2);
+        longitude2=getCenterX(points2);
+        latitude2 = getCenterY(points2);
+        drawRect(xi, yi, longitude2, latitude2, borough2, date, time, width, height, zoom,points2);
+        opacityDot();
+    }
+    else{
+        switch (zoom) {
+            case 1:
+                points2=toZoom(50);
+            case 2:
+                points2=toZoom(Math.floor(40*Math.sqrt(Math.sqrt(filterP.length/longitude.length))));
+                break;
+            case 3:
+                points2=toZoom(Math.floor(30*Math.sqrt(Math.sqrt(filterP.length/longitude.length))));
+                break;
+            case 4:
+                points2=toZoom(Math.floor(20*Math.sqrt(Math.sqrt(filterP.length/longitude.length))));
+                break;
+        }
+        seriousness=getSeriousness(points2);
+        longitude2=getCenterX(points2);
+        latitude2 = getCenterY(points2);
+        drawRect2(xi, yi, longitude2, latitude2, seriousness, date, time, width, height, zoom,points2);
+        opacityDot();
+    }
+}
+
+function heddenweather(){
+  weatherbar = g5.selectAll(".weatherbar");
+  weatherbar.classed("weatherbar--hedden", function(d,i){
+                 if(weatherSelect[i]==0){
+                   return true;
+                 }else{
+                   return false;
+                 }
+               });
+}
+function hedden(){
+  killbar = g3.selectAll(".killbar");
+  killbar.classed("killbar--hedden", function(d,i){
+                 if(monthSelect[i]==0){
+                   return true;
+                 }else{
+                   return false;
+                 }
+               });
+  bar = g3.selectAll(".bar");
+  bar.classed("bar--hedden", function(d,i){
+                 if(monthSelect[i]==0){
+                   return true;
+                 }else{
+                   return false;
+                 }
+               });
+  heddenweather();
+  heddenhour();
+  monthdot = g2.selectAll(".monthdot");
+
+  monthdot.classed("monthdot--hedden", function(d,i){
+                if(monthSelect[i]==0){
+                  return true;
+                }else{
+                  return false;
+                }
+              });
+  injurebar = g6.selectAll(".injurebar");
+  injurebar.classed("injurebar--hedden", function(d,i){
+                if(injureSelect[i]==0){
+                  return true;
+                }else{
+                  return false;
+                }
+              });
+
+}
+function heddenhour(){
+
+  hourdot = g4.selectAll(".hourdot");
+  hourdot.classed("hourdot--hedden",function(d,i){
+
+    if(hourSelect[i]==0){
+
+      return true;
+    }else{
+      return false;
+    }
+  });
+
+}
+function updateMonth(s){
+  updataLineM(month,s);
+  updataBarI(injure,s,kill);
+}
+function updatehour(s){
+  updataLineT(month,s);
+}
+function updateWeather(s){
+  updataBarW(weather,s);
+}
+function updateRate(s){
+  updataBarR(injure,s);
+}
+function filterALL(s){
+  var temp = fillterMonth(s);
+  temp = fillterWeather(temp);
+  temp = fillterHour(temp);
+  temp = fillterInjure(temp);
+  return temp;
+}
+function filterForRate(s){
+  var temp = fillterHour(s);
+  temp = fillterWeather(temp);
+  temp = fillterMonth(temp);
+  return temp;
+}
+function filterForMonth(s){
+  var temp = fillterHour(s);
+  temp = fillterWeather(temp);
+  temp = fillterInjure(temp);
+  return temp;
+}
+function filterForHour(s){
+  var temp = fillterMonth(s);
+  temp = fillterWeather(temp);
+  temp = fillterInjure(temp);
+  return temp;
+}
+function filterForWeather(s){
+  var temp = fillterMonth(s);
+  temp = fillterHour(temp);
+  temp = fillterInjure(temp);
+  return temp;
+}
+function fillterHour(s){
+  var temp = [];
+  for(var i=0; i < s.length;i++){
+    var j = s[i];
+    if(hourSelect[hour[j]]==1){
+      temp.push(j);
+    }
+  }
+  return temp;
+}
+function fillterMonth(s){
+  var temp = [];
+  for(var i=0; i < s.length;i++){
+    var j = s[i];
+    if(monthSelect[month[j]-1]==1){
+      temp.push(j);
+    }
+  }
+  return temp;
+}
+function fillterWeather(s){
+  var temp = [];
+  for(var i=0; i < s.length;i++){
+    var j = s[i];
+    if(weatherSelect[weather[j]]==1){
+      temp.push(j);
+    }
+  }
+  return temp;
+}
+function fillterInjure(s){
+  var temp = [];
+  for(var i=0; i < s.length;i++){
+    var j = s[i];
+    var ir = injure[j];
+    if(ir>3){
+      ir = 3;
+    }
+    if(injureSelect[ir]==1){
+      temp.push(j);
+    }
+  }
+  return temp;
+}
+
+
+function injurebarClean(){
+  svg.selectAll(".injurebar").remove();
+  svg.selectAll(".yaxisR").remove();
+  svg.selectAll(".xaxisR").remove();
+  svg.selectAll(".yaxisRLabel").remove();
+}
+function updataBarR(injure,selectP){
+    injurebarClean();
+
+    var data = [0,0,0,0];
+    for (var m =0;m < selectP.length;m = m+1){
+      var i = selectP[m];
+      var ir = injure[i];
+      if(ir>3){ir=3;}
+      data[ir]+=1;
+    }
+    drawbarR(data);
+}
+function drawbarR(data){
+  var height = 180;
+  var barwidth = 40;
+  var barnum = 4;
+  var pad = 5;
+  var ymax = 1;
+  for(var i = 0; i<data.length;i++){
+    if(ymax < data[i] ){
+      ymax =data[i];
+    }
+  }
+  var x = d3.scaleBand().range([0, barwidth*(barnum+1)]).padding(5);
+  var    yscale = d3.scaleLinear().domain([0,ymax]).range([height, 0]);
+  var xtick=["0","1","2","3"];
+  x.domain(xtick);
+  g6.append("g")
+              .attr("transform", "translate(0," + height + ")")
+              .attr("class","xaxisR")
+              .call(d3.axisBottom(x))
+              .append("text")
+              .attr("y", 30)
+              .attr("x", 10)
+              .attr("text-anchor", "end")
+              .attr("stroke", "black");
+  g6.append("g")
+              .attr("transform", "translate(0," + 0 + ")")
+              .attr("class","yaxisR")
+              .call(d3.axisLeft(yscale).tickFormat(function(d){
+                  return  d;
+              }).ticks(10))
+              .append("text")
+              .attr("transform", "rotate(-90)")
+              .attr("y", 6)
+              .attr("dy", "-5.1em")
+              .attr("text-anchor", "end")
+              .attr("stroke", "black");
+ injurebar = g6.selectAll(".injurebar")
+             .data(data)
+             .enter().append("rect")
+             .attr("class", "injurebar")
+             .attr("x", function(d,i) { return barwidth+i*barwidth-(barwidth-pad)/2; })
+             .attr("y", function(d) { return yscale(d); })
+             .attr("width", barwidth-pad)
+             .attr("fill",function(d,i){
+                     if(i==0){
+                       return "Green";
+                     }
+                     else if(i==1){
+                       return "Orange";
+                     }
+                     else if(i==2){
+                       return "Red";
+                     }
+                     else {
+                       return "#9e0909";
+                     }
+             })
+             .attr("height", function(d) { return height-yscale(d) })
+             .on("click", function(d,i){clickMonth(i)});
+ g6.append("text")
+             .attr("class","yaxisRLabel")
+             .attr("transform", "translate(0,0)")
+             .attr("x", barwidth/2+5)
+             .attr("y", yscale(data[0])-2)
+             .attr("font-size", "12px")
+             .text(data[0]);
+ g6.append("text")
+             .attr("class","yaxisRLabel")
+             .attr("transform", "translate(0,0)")
+             .attr("x", 1*barwidth+barwidth/2+5)
+             .attr("y", yscale(data[1])-2)
+             .attr("font-size", "12px")
+             .text(data[1]);
+ g6.append("text")
+             .attr("class","yaxisRLabel")
+             .attr("transform", "translate(0,0)")
+             .attr("x", 2*barwidth+barwidth/2+5)
+             .attr("y", yscale(data[2])-2)
+             .attr("font-size", "12px")
+             .text(data[2]);
+ g6.append("text")
+             .attr("class","yaxisRLabel")
+             .attr("transform", "translate(0,0)")
+             .attr("x", 3*barwidth+barwidth/2+5)
+             .attr("y", yscale(data[3])-2)
+             .attr("font-size", "12px")
+             .text(data[3]);
+ g6.append("text")
+             .attr("class","yaxisRLabel")
+             .attr("transform", "translate(0,0)")
+             .attr("x", -30)
+             .attr("y", -10)
+             .attr("font-size", "12px")
+             .text("Accident");
+ g6.append("text")
+             .attr("class","yaxisRLabel")
+             .attr("transform", "translate(0,0)")
+             .attr("x", 170)
+             .attr("y", 195 )
+             .attr("font-size", "12px")
+             .text("Injured/Accident");
+ hedden();
+
+ function clickMonth(i){
+
+                  if(injureSelect[i] == 0){
+                    injureSelect[i] = 1;
+                  }else{
+                    injureSelect[i] = 0;
+                  }
+                  hedden();
+                  updateWeather(filterForWeather(selectP));
+                  updateMonth(filterForMonth(selectP));
+                  updatehour(filterForHour(selectP));
+                  opacityDot();
+  }
+}
+function lineTClean(){
+  svg.selectAll(".hourdot").remove();
+  svg.selectAll(".lineT").remove();
+  svg.selectAll(".yaxisT").remove();
+  svg.selectAll(".xaxisT").remove();
+  svg.selectAll(".yaxisTLabel").remove();
+}
+function updataLineT(month,sh){
+    lineTClean();
+    var height = 200;
+    var data = [0,0,0,0,0,0,
+                0,0,0,0,0,0];
+    for (var m =0;m < sh.length;m = m+1){
+      var i = sh[m];
+      data[hour[i]]+=1;
+    }
+    drawlineT(data);
+
+
+}
+function weatherbarClean(){
+  svg.selectAll(".weatherbar").remove();
+  svg.selectAll(".yaxisW").remove();
+  svg.selectAll(".xaxisW").remove();
+  svg.selectAll(".yaxisWLabel").remove();
+}
+function updataBarW(injure,selectP){
+    weatherbarClean();
+
+    var data = [0,0,0,0];
+    for (var m =0;m < selectP.length;m = m+1){
+      var i = selectP[m];
+      data[weather[i]]+=1;
+    }
+    drawbarW(data);
+}
+function drawbarW(data){
+  var height = 180;
+  var barwidth = 40;
+  var barnum = 4;
+  var pad = 5;
+  var ymax = 1;
+  for(var i = 0; i<data.length;i++){
+    if(ymax < data[i] ){
+      ymax =data[i];
+    }
+  }
+  var x = d3.scaleBand().range([0, barwidth*(barnum+1)]).padding(5);
+  var    yscale = d3.scaleLinear().domain([0,ymax]).range([height, 0]);
+  var xtick=["Sunny","rainy","snow","foggy"];
+  x.domain(xtick);
+  g5.append("g")
+              .attr("transform", "translate(0," + height + ")")
+              .attr("class","xaxisW")
+              .call(d3.axisBottom(x))
+              .append("text")
+              .attr("y", 30)
+              .attr("x", 10)
+              .attr("text-anchor", "end")
+              .attr("stroke", "black");
+  g5.append("g")
+              .attr("transform", "translate(0," + 0 + ")")
+              .attr("class","yaxisW")
+              .call(d3.axisLeft(yscale).tickFormat(function(d){
+                  return  d;
+              }).ticks(10))
+              .append("text")
+              .attr("transform", "rotate(-90)")
+              .attr("y", 6)
+              .attr("dy", "-5.1em")
+              .attr("text-anchor", "end")
+              .attr("stroke", "black");
+ weatherbar = g5.selectAll(".weatherbar")
+             .data(data)
+             .enter().append("rect")
+             .attr("class", "weatherbar")
+             .attr("x", function(d,i) { return barwidth+i*barwidth-(barwidth-pad)/2; })
+             .attr("y", function(d) { return yscale(d); })
+             .attr("width", barwidth-pad)
+             .attr("height", function(d) { return height-yscale(d) })
+             .attr("fill",function(d,i){
+                     if(i==0){
+                       return "Orange";
+                     }
+                     else if(i==1){
+                       return "#0c8fb7";
+                     }
+                     else if(i==2){
+                       return "#91e5ff";
+                     }
+                     else {
+                       return "#cbd1d6";
+                     }
+             })
+             .on("click", function(d,i){clickMonth(i)});
+ g5.append("text")
+             .attr("class","yaxisWLabel")
+             .attr("transform", "translate(0,0)")
+             .attr("x", barwidth/2+5)
+             .attr("y", yscale(data[0])-2)
+             .attr("font-size", "12px")
+             .text(data[0]);
+ g5.append("text")
+             .attr("class","yaxisWLabel")
+             .attr("transform", "translate(0,0)")
+             .attr("x", 1*barwidth+barwidth/2+5)
+             .attr("y", yscale(data[1])-2)
+             .attr("font-size", "12px")
+             .text(data[1]);
+ g5.append("text")
+             .attr("class","yaxisWLabel")
+             .attr("transform", "translate(0,0)")
+             .attr("x", 2*barwidth+barwidth/2+5)
+             .attr("y", yscale(data[2])-2)
+             .attr("font-size", "12px")
+             .text(data[2]);
+ g5.append("text")
+             .attr("class","yaxisWLabel")
+             .attr("transform", "translate(0,0)")
+             .attr("x", 3*barwidth+barwidth/2+5)
+             .attr("y", yscale(data[3])-2)
+             .attr("font-size", "12px")
+             .text(data[3]);
+ g5.append("text")
+             .attr("class","yaxisWLabel")
+             .attr("transform", "translate(0,0)")
+             .attr("x", -30)
+             .attr("y", -10)
+             .attr("font-size", "12px")
+             .text("Accident");
+ hedden();
+
+
+ function clickMonth(i){
+
+                  if(weatherSelect[i] == 0){
+                    weatherSelect[i] = 1;
+                  }else{
+                    weatherSelect[i] = 0;
+                  }
+                  hedden();
+                  updateMonth(filterForMonth(selectP));
+                  updatehour(filterForHour(selectP));
+                  updateRate(filterForRate(selectP));
+                  opacityDot();
+  }
+
+
+}
+function drawlineT(data){
+
+      var height = 180;
+      var barwidth = 40;
+      var ymax = 1;
+      for(var i = 0; i<data.length;i++){
+        if(ymax < data[i] ){
+          ymax =data[i];
+        }
+      }
+      var x = d3.scaleBand().range([0, barwidth*(12+1)]).padding(5);
+      var    yscale = d3.scaleLinear().domain([0,ymax]).range([height, 0]);
+      var xtick=["0-2","2-4","4-6","6-8","8-10","10-12",
+                  "12-14","14-16","16-18","18-20","20-22","22-24"];
+      x.domain(xtick);
+      g4.append("g")
+                  .attr("transform", "translate(0," + height + ")")
+                  .attr("class","xaxisT")
+                  .call(d3.axisBottom(x))
+                  .append("text")
+                  .attr("y", 30)
+                  .attr("x", 10)
+                  .attr("text-anchor", "end")
+                  .attr("stroke", "black");
+      g4.append("g")
+                  .attr("transform", "translate(0," + 0 + ")")
+                  .attr("class","yaxisT")
+                  .call(d3.axisLeft(yscale).tickFormat(function(d){
+                      return  d;
+                  }).ticks(10))
+                  .append("text")
+                  .attr("transform", "rotate(-90)")
+                  .attr("y", 6)
+                  .attr("dy", "-5.1em")
+                  .attr("text-anchor", "end")
+                  .attr("stroke", "black");
+      g4.append("text")
+                  .attr("class","yaxisTLabel")
+                  .attr("transform", "translate(0,0)")
+                  .attr("x", -20)
+                  .attr("y", -10)
+                  .attr("font-size", "12px")
+                  .text("Accident");
+      g4.append("text")
+                  .attr("class","yaxisTLabel")
+                  .attr("transform", "translate(0,0)")
+                  .attr("x", -10+ barwidth*(12+1))
+                  .attr("y", height+15)
+                  .attr("font-size", "12px")
+                  .text("Hour");
+      var valueline = d3.line()
+                          .x(function(d,i) { return barwidth+i*barwidth; })
+                          .y(function(d) { return yscale(d); });
+
+      g4.append("path")
+          .data(data)
+          .attr("class", "lineT")
+          .attr("d", valueline(data));
+      hourdot = g4.selectAll(".hourdot")
+                  .data(data)
+                  .enter().append("circle")
+                  .attr("class", "hourdot")
+                  .attr("r", 7)
+                  .attr("cx",function(d,i){return barwidth+i*barwidth})
+                  .attr("cy",function(d){return yscale(d);})
+                  .on("click", function(d,i){clickMonth(i)}) ;
+      heddenhour();
+      function clickMonth(i){
+
+          if(hourSelect[i] == 0){
+            hourSelect[i] = 1;
+          }else{
+            hourSelect[i] = 0;
+          }
+          updateMonth(filterForMonth(selectP));
+          updateWeather(filterForWeather(selectP));
+          updateRate(filterForRate(selectP));
+          hedden();
+          //
+          // console.log(selectH);
+          opacityDot();
+          //console.log(hourSelect);
+      }
+
+}
+function drawLegend(){
+  var height = 150;
+  var barwidth = 100;
+  var pad = 0;
+  g7.append("rect")
+                   .attr("x", 0)
+                   .attr("y", 0)
+                   .attr("width",150)
+                   .attr("height", 100)
+                   .attr("fill","white");
+
+ g7.append("circle")
+                   .attr("class", "legend")
+                   .attr("cx", 10)
+                   .attr("cy", 10)
+                   .attr("r", 7)
+     .attr("fill","red");
+
+ g7.append("circle")
+                   .attr("class", "legend")
+                   .attr("cx", 10)
+                   .attr("cy", 30)
+                   .attr("r", 7)
+     .attr("fill","blue");
+ g7.append("circle")
+                   .attr("class", "legend")
+                   .attr("cx", 10)
+                   .attr("cy", 50)
+                   .attr("r", 7)
+     .attr("fill","green");
+ g7.append("circle")
+                   .attr("class", "legend")
+                   .attr("cx", 10)
+                   .attr("cy", 70)
+                   .attr("r", 7)
+    .attr("fill","purple");
+ g7.append("circle")
+                   .attr("class", "legend")
+                   .attr("cx", 10)
+                   .attr("cy", 90)
+                   .attr("r", 7)
+     .attr("fill","orange");
+ g7.append("text")
+                   .attr("class","legendLabel")
+                   //.attr("transform", "translate(0,0)")
+                   .attr("x", 20)
+                   .attr("y", 12)
+                   .attr("font-size", "12px")
+                   .text("Bronx");
+
+ g7.append("text")
+                   .attr("class","legendLabel")
+                   //.attr("transform", "translate(0,0)")
+                   .attr("x", 20)
+                   .attr("y", 32)
+                   .attr("font-size", "12px")
+                   .text("Manhattan");
+ g7.append("text")
+                   .attr("class","legendLabel")
+                   //.attr("transform", "translate(0,0)")
+                   .attr("x", 20)
+                   .attr("y", 52)
+                   .attr("font-size", "12px")
+                   .text("Queens");
+ g7.append("text")
+                   .attr("class","legendLabel")
+                   //.attr("transform", "translate(0,0)")
+                   .attr("x", 20)
+                   .attr("y", 72)
+                   .attr("font-size", "12px")
+                   .text("Brooklyn");
+
+ g7.append("text")
+                   .attr("class","legendLabel")
+                   //.attr("transform", "translate(0,0)")
+                   .attr("x", 20)
+                   .attr("y", 92)
+                   .attr("font-size", "12px")
+                   .text("Staten Island");
+}
+
+function drawLegend2() {
+
+    var height = 150;
+    var barwidth = 100;
+    var pad = 0;
+
+    g7.append("rect")
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("width", 150)
+        .attr("height", 100)
+        .attr("fill", "white");
+
+    g7.append("circle")
+        .attr("class", "legend")
+        .attr("cx", 10)
+        .attr("cy", 10)
+        .attr("r", 7)
+        .attr("fill", "green");
+
+    g7.append("circle")
+        .attr("class", "legend")
+        .attr("cx", 10)
+        .attr("cy", 30)
+        .attr("r", 7)
+        .attr("fill", "orange");
+    g7.append("circle")
+        .attr("class", "legend")
+        .attr("cx", 10)
+        .attr("cy", 50)
+        .attr("r", 7)
+        .attr("fill", "red");
+    g7.append("circle")
+        .attr("class", "legend")
+        .attr("cx", 10)
+        .attr("cy", 70)
+        .attr("r", 7)
+        .attr("fill", "#9e0909");
+if(zoom!=1){
+    g7.append("text")
+        .attr("class", "legendLabel")
+        //.attr("transform", "translate(0,0)")
+        .attr("x", 20)
+        .attr("y", 12)
+        .attr("font-size", "12px")
+        .text("Injure Rate < 20%");
+
+    g7.append("text")
+        .attr("class", "legendLabel")
+        //.attr("transform", "translate(0,0)")
+        .attr("x", 20)
+        .attr("y", 32)
+        .attr("font-size", "12px")
+        .text("Injure Rate < 35%");
+    g7.append("text")
+        .attr("class", "legendLabel")
+        //.attr("transform", "translate(0,0)")
+        .attr("x", 20)
+        .attr("y", 52)
+        .attr("font-size", "12px")
+        .text("Injure Rate < 50%");
+    g7.append("text")
+        .attr("class", "legendLabel")
+        //.attr("transform", "translate(0,0)")
+        .attr("x", 20)
+        .attr("y", 72)
+        .attr("font-size", "12px")
+        .text("Injure Rate >=50%");
+      }
+      else{
+        g7.append("text")
+            .attr("class", "legendLabel")
+            //.attr("transform", "translate(0,0)")
+            .attr("x", 20)
+            .attr("y", 12)
+            .attr("font-size", "12px")
+            .text("Injure number = 0");
+
+        g7.append("text")
+            .attr("class", "legendLabel")
+            //.attr("transform", "translate(0,0)")
+            .attr("x", 20)
+            .attr("y", 32)
+            .attr("font-size", "12px")
+            .text("Injure number = 1");
+        g7.append("text")
+            .attr("class", "legendLabel")
+            //.attr("transform", "translate(0,0)")
+            .attr("x", 20)
+            .attr("y", 52)
+            .attr("font-size", "12px")
+            .text("Injure number = 2");
+        g7.append("text")
+            .attr("class", "legendLabel")
+            //.attr("transform", "translate(0,0)")
+            .attr("x", 20)
+            .attr("y", 72)
+            .attr("font-size", "12px")
+            .text("Injure number >= 3");
+      }
+}
+
+function opacityDot(){
+    if(mode==1) {
+        dot.classed("dot--select", function (d, i) {
+            if (zoom == 1) {
+                //console.log("AAAAAA");
+                var ir = injure[i];
+                if(ir>3){ir=3;}
+                if (monthSelect[month[i] - 1] == 0 || hourSelect[hour[i]] == 0 ||weatherSelect[weather[i]]==0 || injureSelect[ir]==0) {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        });
+
+        if (zoom != 1) {
+            //console.log("BBBBBB");
+            dot.attr("opacity", function (d, i) {
+                var op = 0;
+                op = filterALL(points2[i]).length * (20 - zoom * zoom) * 0.004+0.3;
+                if (op > 1) {
+                    return 1;
+                } else {
+                    if(op == 0.3){
+                      op =0;
+                    }
+                    return op;
+                }
+            })
+        }
+    }
+    else{
+
+        dot.classed("dot--select", function (d, i) {
+            if (zoom == 1) {
+                var ir = injure[i];
+                if(ir>3){ir=3;}
+                if (monthSelect[month[i] - 1] == 0 || hourSelect[hour[i]] == 0 ||weatherSelect[weather[i]]==0|| injureSelect[ir]==0) {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        });
+        if (zoom != 1) {
+            dot.attr("fill", function (d, i) {
+                var count=0;
+                var totalInjured=0;
+                var p=filterALL(points2[i]);
+                for (var j =0;j<p.length;j++) {
+                    count+=1;
+                    totalInjured+=injure[p[j]];
+                }
+                if(count==0){
+                    return "Green";
+                }
+                var rate=totalInjured/count;
+                if(zoom==1){
+                        if(rate<1){
+                        return "Green";
+                    }
+                    else if(rate<2){
+                        return "Orange";
+                    }
+                    else if(rate<3){
+                        return "Red";
+                    }
+                    else {
+                        return "#9e0909";
+                    }
+                }
+                else {
+                    if (rate <= 0.2) {
+                        return "Green";
+                    } else if (rate <= 0.35) {
+                        return "Orange";
+                    } else if (rate <= 0.5) {
+                        return "Red";
+                    } else {
+                        return "#9e0909";
+                    }
+                }
+
+            });
+            dot.classed("dot--select", function (d, i) {
+                var count=0;
+                var totalInjured=0;
+                var p=filterALL(points2[i]);
+                if(p.length==0){
+                    return true;
+                }
+                else{
+                    return false;
+                }
+            });
+        }
+    }
+}
+function barClean(){
+  svg.selectAll(".bar").remove();
+  svg.selectAll(".killbar").remove();
+  svg.selectAll(".yaxisI").remove();
+  svg.selectAll(".xaxisI").remove();
+  svg.selectAll(".yaxisILabel").remove();
+  svg.selectAll(".barsample").remove();
+}
+function updataBarI(injure,selectP,kill){
+    barClean();
+
+    var data = [0,0,0,0,0,0,
+                0,0,0,0,0,0];
+    for (var m =0;m < selectP.length;m = m+1){
+      var i = selectP[m];
+      data[month[i]-1]+=injure[i];
+    }
+    var data1 = [0,0,0,0,0,0,
+                0,0,0,0,0,0];
+    for (var m =0;m < selectP.length;m = m+1){
+      var i = selectP[m];
+      data1[month[i]-1]+=kill[i];
+    }
+
+    drawbarI(data,data1);
+}
+function drawbarI(data,data1){
+  var height = 180;
+  var barwidth = 40;
+  var pad = 5;
+  var ymax = 1;
+  for(var i = 0; i<data.length;i++){
+    if(ymax < data[i] ){
+      ymax =data[i];
+    }
+  }
+  var x = d3.scaleBand().range([0, barwidth*(12+1)]).padding(5);
+  var    yscale = d3.scaleLinear().domain([0,ymax]).range([height, 0]);
+  var xtick=["Jan","Feb","Mar","Apr","May","Jun",
+              "Jul","Aug","Sep","Oct","Nov","Dec"];
+  x.domain(xtick);
+  g3.append("g")
+              .attr("transform", "translate(0," + height + ")")
+              .attr("class","xaxisI")
+              .call(d3.axisBottom(x))
+              .append("text")
+              .attr("y", 30)
+              .attr("x", 10)
+              .attr("text-anchor", "end")
+              .attr("stroke", "black");
+  g3.append("g")
+              .attr("transform", "translate(0," + 0 + ")")
+              .attr("class","yaxisI")
+              .call(d3.axisLeft(yscale).tickFormat(function(d){
+                  return  d;
+              }).ticks(10))
+              .append("text")
+              .attr("transform", "rotate(-90)")
+              .attr("y", 6)
+              .attr("dy", "-5.1em")
+              .attr("text-anchor", "end")
+              .attr("stroke", "black");
+ g3.append("text")
+       .attr("class","yaxisILabel")
+       .attr("transform", "translate(0,0)")
+       .attr("x", -20)
+       .attr("y", -10)
+       .attr("font-size", "12px")
+       .text("Injured/killed")
+ g3.append("text")
+             .attr("class","yaxisILabel")
+             .attr("transform", "translate(0,0)")
+             .attr("x", -20+ barwidth*(12+1))
+             .attr("y", -10)
+             .attr("font-size", "12px")
+             .text("Accident")
+ bar = g3.selectAll(".bar")
+             .data(data)
+             .enter().append("rect")
+             .attr("class", "bar")
+             .attr("x", function(d,i) { return barwidth+i*barwidth-(barwidth-pad)/2; })
+             .attr("y", function(d) { return yscale(d); })
+             .attr("width", barwidth-pad)
+             .attr("height", function(d) { return height-yscale(d) })
+             .on("mouseover", function(d,i){clickMonth(i)});
+ killbar = g3.selectAll(".killbar")
+             .data(data1)
+             .enter().append("rect")
+             .attr("class", "killbar")
+             .attr("x", function(d,i) { return barwidth+i*barwidth-(barwidth-pad)/2; })
+             .attr("y", function(d) { return yscale(d); })
+             .attr("width", barwidth-pad)
+             .attr("height", function(d) { return height-yscale(d) });
+
+ g3.append("circle")
+                   .attr("class", "monthdotsample")
+                   .attr("cx", barwidth*(12+1)+48.5)
+                   .attr("cy", 34.5)
+                   .attr("r", 7),
+ g3.append("rect")
+                   .attr("class", "barsample")
+                   .attr("x", barwidth*(12+1)+45)
+                   .attr("y", 80)
+                   .attr("width",10)
+                   .attr("height", 10)
+                   .attr("fill","orange");
+ g3.append("rect")
+                  .attr("class", "barsample")
+                  .attr("x", barwidth*(12+1)+45)
+                  .attr("y", 130)
+                  .attr("width",10)
+                  .attr("height", 10)
+                  .attr("fill","red");
+ g3.append("text")
+                   .attr("class","yaxisILabel")
+                   //.attr("transform", "translate(0,0)")
+                   .attr("x", barwidth*(12+1)+35)
+                   .attr("y", 25)
+                   .attr("font-size", "12px")
+                   .text("Accident");
+
+ g3.append("text")
+                   .attr("class","yaxisILabel")
+                   //.attr("transform", "translate(0,0)")
+                   .attr("x", barwidth*(12+1)+35)
+                   .attr("y", 75)
+                   .attr("font-size", "12px")
+                   .text("Injured");
+ g3.append("text")
+                   .attr("class","yaxisILabel")
+                   //.attr("transform", "translate(0,0)")
+                   .attr("x", barwidth*(12+1)+35)
+                   .attr("y", 125)
+                   .attr("font-size", "12px")
+                   .text("Killed");
+ hedden();
+
+ function clickMonth(i){
+
+                  if(monthSelect[i] == 0){
+                    monthSelect[i] = 1;
+                  }else{
+                    monthSelect[i] = 0;
+                  }
+                  hedden();
+                  updateWeather(filterForWeather(selectP));
+                  updateRate(filterForRate(selectP));
+                  updatehour(filterForHour(selectP));
+                  opacityDot();
+  }
+
+
+}
+function updataLineM(month,s){
+    svg.selectAll(".monthdot").remove();
+    svg.selectAll(".line").remove();
+    svg.selectAll(".yaxis").remove();
+    var height = 200;
+    var data = [0,0,0,0,0,0,
+                0,0,0,0,0,0];
+    for (var m =0;m < s.length;m = m+1){
+      var i = s[m];
+      data[month[i]-1]+=1;
+    }
+    drawlineM(data);
+
+
+}
+
+function drawlineM(data){
+  var height = 180;
+  var barwidth = 40;
+  var ymax = 1;
+  for(var i = 0; i<data.length;i++){
+    if(ymax < data[i] ){
+      ymax =data[i];
+    }
+  }
+
+
+  var x = d3.scaleBand().range([0, barwidth*(12+1)]).padding(5);
+  var yscale = d3.scaleLinear().domain([0,ymax]).range([height, 0]);
+
+  g2.append("g")
+              .attr("transform", "translate(" + barwidth*(12+1) + "," + 0 + ")")
+              .attr("class","yaxis")
+              .call(d3.axisRight(yscale).tickFormat(function(d){
+                  return  d;
+              }).ticks(10))
+              .append("text")
+              .attr("transform", "rotate(-90)")
+              .attr("y", 6)
+              .attr("dy", "-5.1em")
+              .attr("text-anchor", "end")
+              .attr("stroke", "black");
+
+  var valueline = d3.line()
+                      .x(function(d,i) { return barwidth+i*barwidth; })
+                      .y(function(d) { return yscale(d); });
+
+  g2.append("path")
+      .data(data)
+      .attr("class", "line")
+      .attr("d", valueline(data));
+  monthdot = g2.selectAll(".monthdot")
+              .data(data)
+              .enter().append("circle")
+              .attr("class", "monthdot")
+              .attr("r", 7)
+              .attr("cx",function(d,i){return barwidth+i*barwidth})
+              .attr("cy",function(d){return yscale(d);})
+              .on("click", function(d,i){clickMonth(i)}) ;
+  hedden();
+  function clickMonth(i){
+      if(monthSelect[i] == 0){
+        monthSelect[i] = 1;
+      }else{
+        monthSelect[i] = 0;
+      }
+      hedden();
+      updateWeather(filterForWeather(selectP));
+      updateRate(filterForRate(selectP));
+      updatehour(filterForHour(selectP));
+      opacityDot();
+  }
+
+
+
+}
+
+
+function drawRect(xi,yi,data,data1,data2,date,time,width,height,zoom,points) {
+    svg.select("g7").remove();
+    drawLegend();
     var div = d3.select("body").append("div")
     .attr("class", "tooltip")
     .style("opacity", 0);
-    var g = svg.append("g")
-        .attr("transform", "translate(" + xi + "," + yi + ")");
 
-    g.append("g")
-        .attr("transform", "translate(" + 0 + "," + 0 + ")")
-        .call(d3.axisLeft(yscale).ticks(10));
-
-
-    /*g.append("g")
-        .attr("transform", "translate(0," + height + ")")
-        .call(d3.axisBottom(xscale).ticks(10));
-        */
     g.append("g")
         .append("rect")
         .attr("class", "rect")
         .attr("width", width)
         .attr("height", height);
 
-    g.selectAll(".dot")
+    dot =g.selectAll(".dot")
         .data(data)
         .enter().append("circle")
         .attr("class", "dot")
-        .attr("r", 3)
+        .attr("r", function (d,i) {
+            if(zoom==1){
+                return 1;
+            }
+            else{
+                return 2*zoom;
+            }
+        })
         .attr("cx", function (d) {
             return xscale(d);
         })
@@ -140,11 +1595,248 @@ function drawRect(xi,yi,data,data1,data2,date,time,width,height,zoom) {
        div.transition()
          .duration(500)
          .style("opacity", 0);
-       })
+       });
+       opacityDot();
+       brush = d3.brush()
+           .extent([[0, 0], [width, height]])
+           .on("brush", brushmove)
+           .on("end", brushend);
 
-    ;
+       brushArea = g.append("g")
+           .attr("class", "brush");
+           brushArea.call(brush);
+
+
+       function brushmove() {
+          var s = d3.event.selection;
+          if (s == null) {
+               dot.classed("dot--hedden", true);
+             } else {
+              selectP = [];
+              selectH = [];
+               dot.classed("dot--hedden", function(d,i) {
+                 if(zoom==1) {
+                    if (xscale(data[i]) <= s[0][0] || xscale(data[i]) >= s[1][0] ||
+                        yscale(data1[i]) <= s[0][1] || yscale(data1[i]) >= s[1][1]) {
+                        return true;
+
+                    } else {
+                            selectP.push(i);
+                        return false;
+                    }
+                }
+                else{
+                    if (xscale(longitude2[i]) <= s[0][0] || xscale(longitude2[i]) >= s[1][0] ||
+                        yscale(latitude2[i]) <= s[0][1] || yscale(latitude2[i]) >= s[1][1]) {
+                        return true;
+
+                    } else {
+                            for (var j=0;j<points2[i].length;j++){
+                                selectP.push(points2[i][j]);
+                            }
+                            selectH.push(i);
+                        return false;
+                    }
+                }
+               });
+             }
+
+
+             updateMonth(filterForMonth(selectP));
+             updatehour(filterForHour(selectP));
+             updateWeather(filterForWeather(selectP));
+             updateRate(filterForRate(selectP));
+       }
+       function brushend() {
+         var s = d3.event.selection;
+         if (s == null) {
+              dot.classed("dot--hedden", false);
+              selectP = temp1;
+              updateMonth(filterForMonth(selectP));
+              updatehour(filterForHour(selectP));
+              updateWeather(filterForWeather(selectP));
+              updateRate(filterForRate(selectP));
+              selectH=[];
+              for(var j=0;j<((6-zoom)*10)*((6-zoom)*10);j++){
+                  selectH.push(j);
+              }
+            }
+          else {
+           selectP = [];
+           selectH = [];
+            dot.classed("dot--hedden", function(d,i) {
+                if(zoom==1) {
+                    if (xscale(data[i]) <= s[0][0] || xscale(data[i]) >= s[1][0] ||
+                        yscale(data1[i]) <= s[0][1] || yscale(data1[i]) >= s[1][1]) {
+                        return true;
+
+                    } else {
+                            selectP.push(i);
+                        return false;
+                    }
+                }
+                else{
+                    if (xscale(longitude2[i]) <= s[0][0] || xscale(longitude2[i]) >= s[1][0] ||
+                        yscale(latitude2[i]) <= s[0][1] || yscale(latitude2[i]) >= s[1][1]) {
+                        return true;
+
+                    } else {
+                            for (var j=0;j<points2[i].length;j++){
+                                selectP.push(points2[i][j]);
+                            }
+
+                            selectH.push(i);
+                        return false;
+                    }
+                }
+            });
+            //console.log(selectH);
+
+
+          }
+
+       }
 }
 
+function drawRect2(xi,yi,data,data1,data2,date,time,width,height,zoom,points) {
+    svg.select("g7").remove();
+    drawLegend2();
+    g.append("g")
+        .append("rect")
+        .attr("class", "rect")
+        .attr("width", width)
+        .attr("height", height);
+
+    dot = g.selectAll(".dot")
+        .data(data)
+        .enter().append("circle")
+        .attr("class", "dot")
+        .attr("r", function (d, i) {
+            if (zoom == 1) {
+                return 1;
+            } else {
+                return 2 * zoom;
+            }
+        })
+        .attr("cx", function (d) {
+            return xscale(d);
+        })
+        .attr("cy", function (d, i) {
+            return yscale(data1[i]);
+        })
+        .attr("fill", function (d, i) {
+            var result = 'Green';
+            if (data2[i] == 0) {
+                result = 'Green';
+            } else if (data2[i] == 1) {
+                result = 'Orange';
+            } else if (data2[i] == 2) {
+                result = 'Red';
+            } else {
+                result = '#9e0909';
+            }
+            return result;
+        });
+    brush = d3.brush()
+        .extent([[0, 0], [width, height]])
+        .on("brush", brushmove)
+        .on("end", brushend);
+
+    brushArea = g.append("g")
+        .attr("class", "brush");
+    brushArea.call(brush);
+
+
+    function brushmove() {
+        var s = d3.event.selection;
+        if (s == null) {
+            dot.classed("dot--hedden", true);
+        } else {
+            selectP = [];
+            selectH = [];
+            dot.classed("dot--hedden", function (d, i) {
+                if (zoom == 1) {
+                    if (xscale(data[i]) <= s[0][0] || xscale(data[i]) >= s[1][0] ||
+                        yscale(data1[i]) <= s[0][1] || yscale(data1[i]) >= s[1][1]) {
+                        return true;
+
+                    } else {
+                        selectP.push(i);
+                        return false;
+                    }
+                } else {
+                    if (xscale(longitude2[i]) <= s[0][0] || xscale(longitude2[i]) >= s[1][0] ||
+                        yscale(latitude2[i]) <= s[0][1] || yscale(latitude2[i]) >= s[1][1]) {
+                        return true;
+
+                    } else {
+                        for (var j = 0; j < points2[i].length; j++) {
+                            selectP.push(points2[i][j]);
+                        }
+                        selectH.push(i);
+                        return false;
+                    }
+                }
+            });
+        }
+
+        updateMonth(filterForMonth(selectP));
+        updatehour(filterForHour(selectP));
+        updateWeather(filterForWeather(selectP));
+        updateRate(filterForRate(selectP));
+
+    }
+
+    function brushend() {
+        var s = d3.event.selection;
+        if (s == null) {
+            dot.classed("dot--hedden", false);
+            selectP = temp1;
+            updateMonth(filterForMonth(selectP));
+            updatehour(filterForHour(selectP));
+            updateWeather(filterForWeather(selectP));
+            updateRate(filterForRate(selectP));
+            selectH = [];
+            for (var j = 0; j < ((6 - zoom) * 10) * ((6 - zoom) * 10); j++) {
+                selectH.push(j);
+            }
+            } else {
+            selectP = [];
+            selectH = [];
+            dot.classed("dot--hedden", function (d, i) {
+                if (zoom == 1) {
+                    if (xscale(data[i]) <= s[0][0] || xscale(data[i]) >= s[1][0] ||
+                        yscale(data1[i]) <= s[0][1] || yscale(data1[i]) >= s[1][1]) {
+                        return true;
+
+                    } else {
+                        selectP.push(i);
+                        return false;
+                    }
+                } else {
+                    if (xscale(longitude2[i]) <= s[0][0] || xscale(longitude2[i]) >= s[1][0] ||
+                        yscale(latitude2[i]) <= s[0][1] || yscale(latitude2[i]) >= s[1][1]) {
+                        return true;
+
+                    } else {
+                        for (var j = 0; j < points2[i].length; j++) {
+                            selectP.push(points2[i][j]);
+                        }
+
+                        selectH.push(i);
+                        return false;
+                    }
+                }
+            });
+            //console.log(selectH);
+            updateMonth(filterForMonth(selectP));
+            updatehour(filterForHour(selectP));
+            updateWeather(filterForWeather(selectP));
+            updateRate(filterForRate(selectP));
+        }
+
+    }
+}
 </script>
 
 </body>
